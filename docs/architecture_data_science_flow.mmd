@@ -1,0 +1,112 @@
+flowchart TB
+    subgraph SRC["1. DATA SOURCES"]
+        direction LR
+        S1[("Product catalog<br/>46 items")]
+        S2[("quotes.csv<br/>100 historical quotes")]
+        S3[("quote_requests.csv<br/>100 requests")]
+        S4[("quote_requests_sample.csv<br/>20 dated test requests")]
+    end
+
+    subgraph ING["2. INGESTION AND STORAGE"]
+        direction LR
+        I1["init_database()<br/>seed tables"]
+        I2[("SQLite<br/>inventory, transactions,<br/>quotes, quote_requests")]
+        I1 --> I2
+    end
+
+    subgraph MOD["3. MODEL LAYER"]
+        direction LR
+        M1["RuleBasedModel<br/>deterministic, offline"]
+        M2["OpenAIServerModel<br/>USE_LLM=1, temperature 0"]
+    end
+
+    subgraph ORCH["4. ORCHESTRATION"]
+        direction LR
+        O1["Customer inquiry<br/>free text + date"]
+        O2["orchestrator_agent<br/>parse, delegate, reply"]
+        O3["register_order_tool"]
+        O4["Order ledger<br/>OrderState + status"]
+        O1 --> O2 --> O3 --> O4
+    end
+
+    subgraph INV["5. INVENTORY AGENT"]
+        direction LR
+        A1["inventory_snapshot_tool<br/>get_all_inventory"]
+        A2["stock_check_tool<br/>get_stock_level"]
+        A3["supplier_lead_time_tool<br/>get_supplier_delivery_date"]
+        A4["assess_order_inventory_tool<br/>catalog match, feasibility, reorder plan"]
+    end
+
+    subgraph QUO["6. QUOTE AGENT"]
+        direction LR
+        Q1["quote_history_tool<br/>search_quote_history"]
+        Q2["build_quote_tool<br/>tier discount + history median, cap 15%"]
+    end
+
+    subgraph FIN["7. FINANCE AGENT"]
+        direction LR
+        F1["cash_balance_tool<br/>get_cash_balance"]
+        F2["financial_report_tool<br/>generate_financial_report"]
+        F3["authorize_purchases_tool<br/>$1,000 reserve check"]
+    end
+
+    subgraph SAL["8. SALES AGENT"]
+        direction LR
+        L1["fulfill_order_tool<br/>create_transaction"]
+        L2["Purchases first,<br/>then sales, booked once"]
+        L1 --- L2
+    end
+
+    subgraph EVAL["9. EVALUATION AND REPORTING"]
+        direction LR
+        E1["7 built-in checks"]
+        E2["test_results.csv"]
+        E3["Charts and Word report"]
+        E1 --> E2 --> E3
+    end
+
+    S1 & S2 & S3 --> I1
+    S4 --> O1
+    I2 -.->|"stock, cash, history"| A1
+    MOD -.->|"chooses next tool call"| ORCH
+    O4 -->|"order_key"| A4
+    A1 & A2 & A3 --> A4
+    A4 -->|"inventory_checked"| Q2
+    Q1 --> Q2
+    Q2 -->|"quoted"| F3
+    F1 & F2 --> F3
+    F3 -->|"authorized"| L1
+    L2 ==>|"writes sales and stock orders"| I2
+    L2 -->|"fulfilled"| O2
+    O2 ==>|"customer reply from ledger"| E1
+    I2 -.->|"reconcile cash and stock"| E1
+
+    classDef src fill:#1565C0,stroke:#0D47A1,color:#FFFFFF;
+    classDef ing fill:#00897B,stroke:#004D40,color:#FFFFFF;
+    classDef mod fill:#F9A825,stroke:#E65100,color:#212121;
+    classDef orch fill:#5E35B1,stroke:#311B92,color:#FFFFFF;
+    classDef inv fill:#43A047,stroke:#1B5E20,color:#FFFFFF;
+    classDef quo fill:#FB8C00,stroke:#E65100,color:#FFFFFF;
+    classDef fin fill:#D81B60,stroke:#880E4F,color:#FFFFFF;
+    classDef sal fill:#6D4C41,stroke:#3E2723,color:#FFFFFF;
+    classDef eval fill:#9E9D24,stroke:#827717,color:#FFFFFF;
+
+    class S1,S2,S3,S4 src;
+    class I1,I2 ing;
+    class M1,M2 mod;
+    class O1,O2,O3,O4 orch;
+    class A1,A2,A3,A4 inv;
+    class Q1,Q2 quo;
+    class F1,F2,F3 fin;
+    class L1,L2 sal;
+    class E1,E2,E3 eval;
+
+    style SRC fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#0D47A1
+    style ING fill:#E0F2F1,stroke:#00897B,stroke-width:2px,color:#004D40
+    style MOD fill:#FFF8E1,stroke:#F9A825,stroke-width:2px,color:#E65100
+    style ORCH fill:#EDE7F6,stroke:#5E35B1,stroke-width:2px,color:#311B92
+    style INV fill:#E8F5E9,stroke:#43A047,stroke-width:2px,color:#1B5E20
+    style QUO fill:#FFF3E0,stroke:#FB8C00,stroke-width:2px,color:#E65100
+    style FIN fill:#FCE4EC,stroke:#D81B60,stroke-width:2px,color:#880E4F
+    style SAL fill:#EFEBE9,stroke:#6D4C41,stroke-width:2px,color:#3E2723
+    style EVAL fill:#F9FBE7,stroke:#9E9D24,stroke-width:2px,color:#827717
